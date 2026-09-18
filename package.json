@@ -1,0 +1,16 @@
+{
+  "name": "orbit-bloom",
+  "version": "1.0.0",
+  "private": true,
+  "description": "轨道花园 · 注册 + 单人闯关 100 关 + 真人 1v1 联网对战",
+  "main": "server.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

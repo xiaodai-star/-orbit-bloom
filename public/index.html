@@ -1,0 +1,710 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#0a0b22" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>轨道花园 · Orbit Bloom</title>
+  <style>
+    :root {
+      --ink: #f7f4ff;
+      --muted: #aaa6c7;
+      --panel: rgba(23, 21, 59, .72);
+      --line: rgba(223, 216, 255, .15);
+      --violet: #9a7cff;
+      --cyan: #79f5e6;
+      --pink: #ff7ca8;
+      --gold: #ffd982;
+      --red: #ff8f9f;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: #070719; }
+    body {
+      min-height: 100dvh;
+      color: var(--ink);
+      font-family: ui-rounded, "SF Pro Rounded", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      overscroll-behavior: none;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    button { font: inherit; color: inherit; border: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    .app {
+      position: relative;
+      width: min(100%, 560px);
+      min-height: 100dvh;
+      margin: 0 auto;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 78% 3%, rgba(125, 89, 248, .3), transparent 28%),
+        radial-gradient(circle at 8% 63%, rgba(17, 178, 191, .12), transparent 32%),
+        linear-gradient(160deg, #111036 0%, #09091f 55%, #11102e 100%);
+    }
+    .app::before, .app::after { content: ""; position: absolute; pointer-events: none; border-radius: 50%; filter: blur(36px); opacity: .32; }
+    .app::before { width: 180px; height: 180px; background: #6d52ee; top: 22%; right: -95px; }
+    .app::after { width: 170px; height: 170px; background: #00bfc5; left: -115px; bottom: 12%; }
+    .topbar {
+      position: relative; z-index: 2; display: flex; justify-content: space-between; align-items: center;
+      padding: max(18px, env(safe-area-inset-top)) 20px 10px;
+    }
+    .brand { display: flex; align-items: center; gap: 9px; letter-spacing: .08em; font-size: 12px; font-weight: 800; }
+    .brand-mark { width: 29px; height: 29px; border-radius: 10px; display: grid; place-items: center; background: linear-gradient(145deg, #b79dff, #6851e7); box-shadow: 0 6px 18px #7156ed66; font-size: 16px; }
+    .round-icon { width: 38px; height: 38px; border-radius: 50%; background: rgba(255,255,255,.08); border: 1px solid var(--line); display: grid; place-items: center; font-size: 16px; transition: transform .16s, background .16s; }
+    .round-icon:active { transform: scale(.9); background: rgba(255,255,255,.17); }
+    .player-chip { display: flex; align-items: center; gap: 7px; max-width: 150px; padding: 5px 9px 5px 5px; border: 1px solid var(--line); border-radius: 99px; color: #e8e2ff; background: rgba(255,255,255,.06); font-size: 11px; font-weight: 800; overflow: hidden; }
+    .top-actions { display: flex; align-items: center; gap: 7px; }
+    .player-chip span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .avatar { width: 24px; height: 24px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 50%; color: #25195a; background: linear-gradient(135deg, #83f6e7, #ae95ff); font-size: 12px; }
+    .mission {
+      position: relative; z-index: 2; margin: 0 20px 11px; padding: 11px 13px;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      border: 1px solid var(--line); border-radius: 16px; background: linear-gradient(100deg, rgba(255,255,255,.10), rgba(255,255,255,.035)); backdrop-filter: blur(12px);
+    }
+    .mission-label { color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .12em; }
+    .mission-text { margin-top: 3px; font-size: 13px; font-weight: 700; }
+    .level-pill { flex: 0 0 auto; padding: 7px 10px; border-radius: 100px; color: #dcd2ff; background: rgba(154,124,255,.18); font-size: 11px; font-weight: 800; }
+    .game-wrap { position: relative; z-index: 1; margin: 0 12px; border-radius: 27px; overflow: hidden; border: 1px solid rgba(255,255,255,.12); background: #0c0b27; box-shadow: 0 20px 50px rgba(0,0,0,.22), inset 0 0 35px rgba(150,123,255,.07); }
+    canvas { display: block; width: 100%; height: min(54dvh, 500px); min-height: 340px; touch-action: none; }
+    .canvas-shine { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(145deg, rgba(255,255,255,.12), transparent 20%, transparent 80%, rgba(125,245,230,.06)); mix-blend-mode: screen; }
+    .battle-strip { position: absolute; z-index: 2; top: 12px; left: 12px; right: 12px; height: 35px; padding: 0 11px; display: flex; align-items: center; justify-content: center; gap: 7px; border: 1px solid rgba(255,255,255,.13); border-radius: 11px; color: #dcd5fb; background: rgba(9,8,34,.58); backdrop-filter: blur(8px); font-size: 10px; font-weight: 800; }
+    .battle-strip[hidden] { display: none; }
+    .battle-strip b { color: var(--cyan); font-size: 14px; }
+    .battle-strip b.enemy-score { color: var(--pink); }
+    .battle-strip .vs { padding: 2px 5px; border-radius: 5px; color: #1b1438; background: var(--gold); font-size: 8px; letter-spacing: .08em; }
+    .hud {
+      position: relative; z-index: 2; margin: 13px 20px 0; display: grid; grid-template-columns: 1fr 1fr 1.15fr; gap: 8px;
+    }
+    .stat { min-width: 0; min-height: 62px; padding: 10px 10px 9px; border: 1px solid var(--line); border-radius: 17px; background: var(--panel); backdrop-filter: blur(10px); }
+    .stat-label { color: var(--muted); font-size: 9px; font-weight: 800; letter-spacing: .11em; }
+    .stat-value { margin-top: 5px; font-size: 17px; font-weight: 900; line-height: 1; white-space: nowrap; }
+    .hearts { color: var(--pink); font-size: 14px; letter-spacing: -1px; overflow: hidden; }
+    .combo-value { color: var(--gold); }
+    .pulse-row { display: flex; align-items: center; gap: 7px; }
+    .pulse-dot { width: 8px; height: 8px; border-radius: 50%; background: #756e9b; box-shadow: 0 0 0 3px rgba(255,255,255,.04); transition: .2s; }
+    .pulse-dot.ready { background: var(--cyan); box-shadow: 0 0 12px #79f5e6; }
+    .pulse-bar { height: 6px; flex: 1; border-radius: 10px; overflow: hidden; background: rgba(255,255,255,.1); }
+    .pulse-fill { width: 0%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #7af8e8, #a984ff); transition: width .08s linear; }
+    .bottom {
+      position: relative; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      margin: 13px 20px 0; padding-bottom: max(18px, env(safe-area-inset-bottom));
+    }
+    .hint { max-width: 265px; color: #bcb7d6; font-size: 11px; line-height: 1.5; }
+    .pause { padding: 10px 14px; border-radius: 14px; font-size: 12px; font-weight: 800; background: rgba(255,255,255,.09); border: 1px solid var(--line); }
+    .pause:disabled { opacity: .4; cursor: default; }
+    .overlay {
+      position: absolute; z-index: 5; inset: 0; display: grid; place-items: center; padding: 25px 23px; background: rgba(7,7,25,.48); backdrop-filter: blur(6px); transition: opacity .25s, visibility .25s;
+    }
+    .overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+    .modal { width: min(100%, 355px); max-height: calc(100dvh - 44px); overflow-y: auto; text-align: center; padding: 28px 23px 23px; border: 1px solid rgba(255,255,255,.18); border-radius: 28px; background: linear-gradient(145deg, rgba(40,35,91,.94), rgba(13,13,43,.96)); box-shadow: 0 25px 55px rgba(0,0,0,.4); scrollbar-width: none; }
+    .modal-symbol { width: 64px; height: 64px; margin: 0 auto 16px; border-radius: 22px; display: grid; place-items: center; background: linear-gradient(145deg, #cdb4ff, #7960ee); box-shadow: 0 10px 27px #7057e477; font-size: 32px; }
+    .modal h1 { margin: 0; font-size: 27px; letter-spacing: -.04em; }
+    .modal .subtitle { margin: 8px auto 17px; max-width: 280px; color: #c0badc; font-size: 13px; line-height: 1.55; }
+    .auth-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 16px; padding: 4px; border-radius: 13px; background: rgba(4,4,25,.4); }
+    .auth-tab { padding: 9px; border-radius: 10px; font-size: 13px; font-weight: 800; color: #a9a2c2; background: transparent; }
+    .auth-tab.active { color: #150e31; background: linear-gradient(100deg, #7cf6e7, #b29aff); }
+    .profile-form { text-align: left; }
+    .field-label { display: block; margin: 0 0 7px 3px; color: #c6bfe1; font-size: 11px; font-weight: 800; }
+    .name-field { width: 100%; margin-bottom: 11px; padding: 13px 14px; outline: none; border: 1px solid rgba(255,255,255,.15); border-radius: 14px; color: var(--ink); background: rgba(4,4,25,.42); font: inherit; font-size: 14px; }
+    .name-field:focus { border-color: var(--cyan); box-shadow: 0 0 0 3px rgba(121,245,230,.12); }
+    .auth-error { min-height: 16px; margin: 9px 2px 0; color: var(--red); font-size: 11px; line-height: 1.4; }
+    .play { width: 100%; padding: 14px; border-radius: 15px; font-weight: 900; font-size: 15px; letter-spacing: .04em; color: #150e31; background: linear-gradient(100deg, #7cf6e7, #b29aff); box-shadow: 0 8px 24px rgba(122,245,232,.28); transition: transform .15s, filter .15s; }
+    .play:active { transform: scale(.97); filter: brightness(.9); }
+    .play:disabled { filter: grayscale(.4) brightness(.7); cursor: default; }
+    .secondary-play { width: 100%; margin-top: 9px; padding: 11px; border-radius: 13px; color: #d8d2ef; font-size: 12px; font-weight: 800; background: rgba(255,255,255,.06); border: 1px solid var(--line); }
+    .welcome { margin-bottom: 12px; color: #bdb6d9; font-size: 13px; }
+    .welcome b { color: var(--cyan); }
+    .welcome .stats { display: block; margin-top: 3px; color: #918cad; font-size: 10px; font-weight: 600; }
+    .mode-tabs { display: grid; gap: 8px; margin: 0 0 12px; }
+    .mode-card { width: 100%; display: flex; align-items: center; gap: 10px; padding: 12px; text-align: left; border: 1px solid rgba(255,255,255,.10); border-radius: 15px; color: #f0ecff; background: rgba(255,255,255,.045); transition: .16s; }
+    .mode-card::before { content: ""; width: 9px; height: 9px; flex: 0 0 auto; border-radius: 50%; background: #6e678f; }
+    .mode-card.duel::before { background: var(--pink); }
+    .mode-card > span { display: block; min-width: 0; font-size: 12px; font-weight: 900; }
+    .mode-card small { display: block; margin-top: 2px; color: #a9a2c2; font-size: 10px; font-weight: 600; }
+    .mode-card.selected { border-color: rgba(121,245,230,.58); background: linear-gradient(100deg, rgba(121,245,230,.15), rgba(154,124,255,.12)); }
+    .mode-card.selected::before { background: var(--cyan); box-shadow: 0 0 11px var(--cyan); }
+    .stage-select { margin: 0 0 14px; padding: 10px; border: 1px solid var(--line); border-radius: 14px; background: rgba(255,255,255,.045); }
+    .stage-select[hidden] { display: none; }
+    .stage-label { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; color: #aaa4c6; font-size: 10px; font-weight: 800; }
+    .stage-label b { color: var(--gold); font-size: 12px; }
+    .stage-controls { display: grid; grid-template-columns: 39px 1fr 39px; gap: 7px; align-items: center; }
+    .stage-arrow { height: 34px; border-radius: 10px; background: rgba(255,255,255,.09); font-weight: 900; }
+    .stage-arrow:disabled { opacity: .28; }
+    .stage-current { color: #e9e4ff; font-size: 13px; font-weight: 900; }
+    .duel-note { margin: -3px 0 14px; padding: 9px 10px; border-radius: 12px; color: #c7bfdd; background: rgba(255,124,168,.08); font-size: 10px; line-height: 1.4; }
+    .duel-note[hidden] { display: none; }
+    .match-status { margin: 0 0 14px; padding: 11px 12px; border-radius: 12px; color: #7af0e4; background: rgba(121,245,230,.10); border: 1px solid rgba(121,245,230,.25); font-size: 12px; font-weight: 800; }
+    .match-status[hidden] { display: none; }
+    .match-status .dots::after { content: "…"; animation: blink 1.2s steps(4) infinite; }
+    @keyframes blink { 0%,100%{opacity:.15} 50%{opacity:1} }
+    .result-score { color: var(--gold); font-size: 42px; font-weight: 900; line-height: 1; margin: 3px 0 6px; }
+    .record { margin: 0 0 16px; color: #bcb7d7; font-size: 12px; }
+    .toast { position: absolute; z-index: 8; top: 138px; left: 50%; transform: translate(-50%, -8px); padding: 8px 13px; border-radius: 99px; pointer-events: none; opacity: 0; color: #15112c; font-size: 12px; font-weight: 900; background: #f5ebc3; transition: opacity .18s, transform .18s; white-space: nowrap; }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+    .footer-note { position: absolute; z-index: 1; bottom: 7px; width: 100%; text-align: center; color: rgba(207,200,242,.35); font-size: 9px; letter-spacing: .12em; }
+    @media (max-height: 690px) { canvas { height: 49dvh; min-height: 310px; } .mission { margin-bottom: 8px; padding: 8px 11px; } .hud { margin-top: 9px; } .stat { min-height: 55px; padding: 8px 9px; } .bottom { margin-top: 9px; } }
+  </style>
+</head>
+<body>
+  <main class="app" id="app">
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark">✦</span><span>ORBIT BLOOM</span></div>
+      <div class="top-actions">
+        <div class="player-chip" title="当前账号"><span class="avatar">✦</span><span id="playerName">未登录</span></div>
+        <button class="round-icon" id="soundBtn" aria-label="切换音效">♪</button>
+      </div>
+    </header>
+    <section class="mission" aria-label="当前任务">
+      <div><div class="mission-label">今晚的花园</div><div class="mission-text" id="missionText">收集星种，让月亮开花</div></div>
+      <div class="level-pill" id="levelPill">微光期</div>
+    </section>
+    <section class="game-wrap" aria-label="游戏区域">
+      <canvas id="game" aria-label="轨道花园游戏画面"></canvas>
+      <div class="canvas-shine"></div>
+      <div class="battle-strip" id="battleStrip" hidden><span id="battlePlayer">你</span><b id="battlePlayerScore">0</b><span class="vs">VS</span><b class="enemy-score" id="battleEnemyScore">0</b><span id="battleEnemy">对手</span></div>
+      <div class="toast" id="toast">完美拦截！</div>
+    </section>
+    <section class="hud" aria-label="游戏状态">
+      <div class="stat"><div class="stat-label">月亮能量</div><div class="stat-value hearts" id="hearts">♥♥♥♥♥</div></div>
+      <div class="stat"><div class="stat-label">花束连击</div><div class="stat-value combo-value" id="combo">× 0</div></div>
+      <div class="stat"><div class="stat-label">共振脉冲</div><div class="pulse-row"><span class="pulse-dot" id="pulseDot"></span><div class="pulse-bar"><div class="pulse-fill" id="pulseFill"></div></div></div><div class="stat-value" id="score">0</div></div>
+    </section>
+    <section class="bottom"><div class="hint">拖动守护卫星接住 <span style="color:#79f5e6">星种</span>，避开 <span style="color:#ff7ca8">碎晶</span>。长按后松开，释放脉冲。</div><button class="pause" id="pauseBtn">暂停</button></section>
+    <div class="footer-note">一指 · 竖屏 · 星海花园</div>
+
+    <div class="overlay" id="authOverlay">
+      <div class="modal">
+        <div class="modal-symbol">☾</div>
+        <h1 id="authTitle">欢迎回来</h1>
+        <p class="subtitle" id="authSubtitle">登录后开始单人闯关，或与真人 1v1 联网对战</p>
+        <div class="auth-tabs">
+          <button class="auth-tab active" data-tab="login">登录</button>
+          <button class="auth-tab" data-tab="register">注册</button>
+        </div>
+        <div class="profile-form">
+          <label class="field-label" for="username">用户名</label>
+          <input class="name-field" id="username" maxlength="16" autocomplete="username" placeholder="2–16 位，中文/字母/数字/下划线" />
+          <label class="field-label" for="password">密码</label>
+          <input class="name-field" id="password" type="password" maxlength="64" autocomplete="current-password" placeholder="至少 4 位" />
+          <button class="play" id="authSubmit">登 录</button>
+          <p class="auth-error" id="authError"></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="overlay hidden" id="lobbyOverlay">
+      <div class="modal">
+        <div class="modal-symbol">✦</div>
+        <div class="welcome">晚上好，<b id="welcomeName">守护者</b><span class="stats" id="playerStats"></span></div>
+        <div class="mode-tabs">
+          <button class="mode-card selected" data-mode="campaign"><span>单人闯关<small>100 关轨道试炼 · 逐关解锁</small></span></button>
+          <button class="mode-card duel" data-mode="duel"><span>多人模式 · 1v1 对决<small>真人联网匹配 · 50 秒同屏定胜负</small></span></button>
+        </div>
+        <div class="stage-select" id="stageSelect">
+          <div class="stage-label"><span>关卡选择</span><b id="unlockedLabel">已解锁 1 / 100</b></div>
+          <div class="stage-controls"><button class="stage-arrow" id="prevLevel" aria-label="上一关">‹</button><div class="stage-current" id="stageCurrent">第 1 / 100 关</div><button class="stage-arrow" id="nextLevel" aria-label="下一关">›</button></div>
+        </div>
+        <p class="duel-note" id="duelNote" hidden>真人联网对战：服务器为你匹配另一位玩家，双方在相同星种序列下 50 秒同屏比拼分数。</p>
+        <div class="match-status" id="matchStatus" hidden><span class="dots">正在匹配对手</span></div>
+        <button class="play" id="startBtn">开始第 1 关</button>
+        <button class="secondary-play" id="logoutBtn">退出登录</button>
+      </div>
+    </div>
+
+    <div class="overlay hidden" id="endOverlay">
+      <div class="modal">
+        <div class="modal-symbol">✿</div>
+        <h1 id="resultTitle">月亮睡着了</h1>
+        <div class="result-score" id="endScore">0</div>
+        <p class="record" id="recordText">今晚最高 0</p>
+        <button class="play" id="againBtn">再种一片星光</button>
+        <button class="secondary-play" id="lobbyBtn">返回模式选择</button>
+      </div>
+    </div>
+  </main>
+  <script>
+  (() => {
+    'use strict';
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const $ = (id) => document.getElementById(id);
+    const ui = {
+      hearts: $('hearts'), combo: $('combo'), score: $('score'), pulseFill: $('pulseFill'), pulseDot: $('pulseDot'),
+      mission: $('missionText'), level: $('levelPill'), toast: $('toast'), sound: $('soundBtn'), playerName: $('playerName'),
+      auth: $('authOverlay'), lobby: $('lobbyOverlay'), end: $('endOverlay'),
+      authTitle: $('authTitle'), authSubtitle: $('authSubtitle'), username: $('username'), password: $('password'),
+      authSubmit: $('authSubmit'), authError: $('authError'),
+      welcomeName: $('welcomeName'), playerStats: $('playerStats'), stageSelect: $('stageSelect'), stageCurrent: $('stageCurrent'),
+      unlockedLabel: $('unlockedLabel'), prevLevel: $('prevLevel'), nextLevel: $('nextLevel'), duelNote: $('duelNote'),
+      matchStatus: $('matchStatus'), startBtn: $('startBtn'), logoutBtn: $('logoutBtn'),
+      battle: $('battleStrip'), battlePlayer: $('battlePlayer'), battlePlayerScore: $('battlePlayerScore'),
+      battleEnemy: $('battleEnemy'), battleEnemyScore: $('battleEnemyScore'),
+      resultTitle: $('resultTitle'), endScore: $('endScore'), record: $('recordText'), againBtn: $('againBtn'), lobbyBtn: $('lobbyBtn'),
+      pause: $('pauseBtn')
+    };
+
+    const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws';
+    const PROFILE_KEY = 'orbit-bloom:profile';
+    const UNLOCK_KEY = 'orbit-bloom:unlocked';
+    const HIGH_KEY = 'orbit-bloom:highscore';
+
+    let W = 0, H = 0, dpr = 1, cx = 0, cy = 0, radius = 0;
+    let last = 0, raf = 0, audio = null, muted = false, toastTimer = 0;
+
+    const state = {
+      active: false, paused: false, score: 0, life: 5, combo: 0, bestCombo: 0,
+      elapsed: 0, nextSpawn: .5, holding: false, holdStart: 0, syncTimer: 0,
+      mode: 'campaign', level: 1, stageTarget: 5, stageCollected: 0,
+      duel: false, duelTime: 0, opponentScore: 0, opponentCombo: 0, opponentName: '对手',
+      schedule: [], scheduleIdx: 0, waitingSettle: false, resultAction: 'retry',
+      player: { angle: -Math.PI / 2, target: -Math.PI / 2 },
+      particles: [], entities: [], pulses: [], stars: []
+    };
+
+    let profile = readProfile();
+    let unlockedLevel = clamp(Number(localStorage.getItem(UNLOCK_KEY) || 1), 1, 100);
+    let highScore = Number(localStorage.getItem(HIGH_KEY) || 0);
+    let selectedLevel = unlockedLevel;
+    let selectedMode = 'campaign';
+    let socket = null;
+    let matchmaking = false;
+    let match = null;
+    let resumeTried = false;
+
+    function readProfile() { try { return JSON.parse(localStorage.getItem(PROFILE_KEY) || 'null'); } catch (_) { return null; } }
+    function writeProfile(p) { localStorage.setItem(PROFILE_KEY, JSON.stringify(p)); }
+
+    // ---- 基础工具 ----
+    function polar(angle, dist) { return { x: cx + Math.cos(angle) * dist, y: cy + Math.sin(angle) * dist }; }
+    function shortAngle(a, b) { return Math.atan2(Math.sin(b - a), Math.cos(b - a)); }
+    function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+    function rand(a, b) { return a + Math.random() * (b - a); }
+    function makeRng(seed) {
+      let s = seed >>> 0;
+      return function () {
+        s = (s + 0x6D2B79F5) | 0;
+        let t = Math.imul(s ^ (s >>> 15), 1 | s);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+
+    // ---- 音频 ----
+    function buildAudio() { if (!audio) { try { audio = new (window.AudioContext || window.webkitAudioContext)(); } catch (_) {} } if (audio && audio.state === 'suspended') audio.resume(); }
+    function blip(kind) {
+      if (muted || !audio) return;
+      const o = audio.createOscillator(), gain = audio.createGain(), t = audio.currentTime;
+      const config = { good: [620, .11, 'sine'], bonus: [840, .13, 'triangle'], bad: [150, .18, 'sawtooth'], pulse: [290, .32, 'sine'] }[kind] || [440, .1, 'sine'];
+      o.type = config[2]; o.frequency.setValueAtTime(config[0], t);
+      if (kind === 'good') o.frequency.exponentialRampToValueAtTime(940, t + .1);
+      if (kind === 'bad') o.frequency.exponentialRampToValueAtTime(80, t + .16);
+      gain.gain.setValueAtTime(.0001, t); gain.gain.exponentialRampToValueAtTime(kind === 'bad' ? .09 : .065, t + .015); gain.gain.exponentialRampToValueAtTime(.0001, t + config[1]);
+      o.connect(gain).connect(audio.destination); o.start(t); o.stop(t + config[1] + .03);
+    }
+
+    // ---- 服务端通信 ----
+    function connectWs() {
+      if (socket) { try { socket.close(); } catch (_) {} }
+      socket = new WebSocket(WS_URL);
+      socket.onopen = () => { if (profile) { resumeTried = true; send({ type: 'auth', action: 'resume', token: profile.token }); } };
+      socket.onmessage = (e) => { let m; try { m = JSON.parse(e.data); } catch (_) { return; } onServer(m); };
+      socket.onclose = () => { if (state.active && state.duel) { /* 连接断开 */ } };
+    }
+    function send(obj) { if (socket && socket.readyState === 1) socket.send(JSON.stringify(obj)); }
+
+    function onServer(m) {
+      switch (m.type) {
+        case 'auth_ok': onAuthOk(m); break;
+        case 'auth_err': onAuthErr(m); break;
+        case 'queue_status': break;
+        case 'match_found': onMatchFound(m); break;
+        case 'game_start': onGameStart(m); break;
+        case 'opponent_score': state.opponentScore = Number(m.score) || 0; state.opponentCombo = Number(m.combo) || 0; break;
+        case 'game_end': onGameEnd(m); break;
+      }
+    }
+
+    function onAuthOk(m) {
+      resumeTried = false;
+      profile = { token: m.token, username: m.player.username };
+      writeProfile(profile);
+      ui.playerName.textContent = profile.username;
+      updateStats(m.player.stats);
+      enterLobby();
+    }
+    function onAuthErr(m) {
+      if (resumeTried) {
+        resumeTried = false;
+        profile = null; localStorage.removeItem(PROFILE_KEY);
+        showAuth();
+        setAuthError(m.message || '会话已过期，请重新登录');
+      } else {
+        setAuthError(m.message || '操作失败');
+      }
+    }
+    function updateStats(stats) {
+      if (!stats) { ui.playerStats.textContent = ''; return; }
+      ui.playerStats.textContent = `战绩 ${stats.wins} 胜 · ${stats.losses} 负 · ${stats.draws} 平 · 最高 ${stats.highScore}`;
+    }
+
+    // ---- 界面切换 ----
+    function showAuth() { ui.auth.classList.remove('hidden'); ui.lobby.classList.add('hidden'); ui.end.classList.add('hidden'); }
+    function enterLobby() {
+      ui.auth.classList.add('hidden'); ui.end.classList.add('hidden');
+      ui.lobby.classList.remove('hidden');
+      selectedLevel = unlockedLevel;
+      updateLobby();
+    }
+    function updateLobby() {
+      ui.welcomeName.textContent = profile ? profile.username : '守护者';
+      ui.unlockedLabel.textContent = `已解锁 ${unlockedLevel} / 100`;
+      ui.stageCurrent.textContent = `第 ${selectedLevel} / 100 关`;
+      ui.prevLevel.disabled = selectedLevel <= 1;
+      ui.nextLevel.disabled = selectedLevel >= unlockedLevel;
+      ui.stageSelect.hidden = selectedMode !== 'campaign';
+      ui.duelNote.hidden = selectedMode !== 'duel';
+      ui.matchStatus.hidden = !(selectedMode === 'duel' && (matchmaking || match));
+      document.querySelectorAll('.mode-card').forEach((c) => c.classList.toggle('selected', c.dataset.mode === selectedMode));
+      updateStartBtn();
+    }
+    function updateStartBtn() {
+      if (selectedMode === 'campaign') { ui.startBtn.textContent = `开始第 ${selectedLevel} 关`; ui.startBtn.disabled = false; }
+      else { ui.startBtn.textContent = matchmaking ? '取消匹配' : '开始 1v1 匹配'; ui.startBtn.disabled = !!match; }
+    }
+    function setAuthError(msg) { ui.authError.textContent = msg || ''; }
+
+    // ---- 游戏核心 ----
+    function resize() {
+      const rect = canvas.getBoundingClientRect();
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      W = rect.width; H = rect.height; canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0); cx = W / 2; cy = H / 2; radius = Math.min(W, H) * .405;
+      makeStars();
+    }
+    function makeStars() {
+      state.stars = Array.from({ length: Math.floor((W * H) / 2900) }, () => ({ x: Math.random() * W, y: Math.random() * H, r: Math.random() * 1.45 + .25, a: Math.random() * .55 + .15, phase: Math.random() * 6.2 }));
+    }
+    function buildSchedule(seed, seconds) {
+      const rng = makeRng(seed); const ev = []; let t = 0.6;
+      while (t < seconds) {
+        const hostile = rng() < (0.18 + (t / seconds) * 0.28);
+        const rare = !hostile && rng() < 0.13;
+        ev.push({ t, type: hostile ? 'hazard' : (rare ? 'rare' : 'seed'), angle: rng() * Math.PI * 2, speedFactor: 0.115 + rng() * 0.06 + (t / seconds) * 0.05, wobble: rng() * 6.28, spin: rng() * 4 - 2 });
+        t += 0.42 + rng() * 0.62;
+      }
+      return ev;
+    }
+    function reset(opts) {
+      const mode = opts.mode, level = clamp(opts.level || 1, 1, 100);
+      const duel = mode === 'duel';
+      Object.assign(state, {
+        active: true, paused: false, score: 0, life: 5, combo: 0, bestCombo: 0,
+        elapsed: 0, nextSpawn: .5, holding: false, holdStart: 0, syncTimer: 0,
+        mode, level, stageTarget: 4 + Math.ceil(level * 0.6), stageCollected: 0,
+        duel, duelTime: duel ? ((opts.duration || 50000) / 1000) : 0,
+        opponentScore: 0, opponentCombo: 0, opponentName: opts.opponent || '对手',
+        schedule: duel ? buildSchedule(opts.seed, (opts.duration || 50000) / 1000) : [], scheduleIdx: 0,
+        waitingSettle: false, resultAction: 'retry',
+        player: { angle: -Math.PI / 2, target: -Math.PI / 2 },
+        particles: [], entities: [], pulses: []
+      });
+      ui.pause.textContent = '暂停'; ui.pause.disabled = duel; ui.end.classList.add('hidden');
+      ui.battle.hidden = !duel;
+      updateUI();
+    }
+    function run() { cancelAnimationFrame(raf); last = performance.now(); raf = requestAnimationFrame(loop); }
+
+    function spawnRandom() {
+      const hostile = Math.random() < Math.min(.2 + state.elapsed * .008, .42);
+      const rare = !hostile && Math.random() < .13;
+      const angle = Math.random() * Math.PI * 2;
+      state.entities.push({ angle, dist: radius * 1.25, type: hostile ? 'hazard' : (rare ? 'rare' : 'seed'), r: hostile ? 10 : (rare ? 10 : 8), speed: radius * rand(.115, .17) * (1 + state.elapsed * .011), wobble: Math.random() * 6.28, spin: rand(-2, 2) });
+    }
+    function spawnScheduled() {
+      const e = state.schedule[state.scheduleIdx++];
+      state.entities.push({ angle: e.angle, dist: radius * 1.25, type: e.type, r: e.type === 'hazard' ? 10 : (e.type === 'rare' ? 10 : 8), speed: radius * e.speedFactor, wobble: e.wobble, spin: e.spin });
+    }
+    function burst(x, y, color, count = 12, force = 1) {
+      for (let i = 0; i < count; i++) { const a = Math.random() * 6.283, s = rand(18, 75) * force; state.particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, r: rand(1.1, 3.4) * force, color, life: rand(.32, .68), max: 1 }); }
+    }
+    function showToast(message) { ui.toast.textContent = message; ui.toast.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => ui.toast.classList.remove('show'), 900); }
+    function collect(entity, viaPulse = false) {
+      if (state.duel && state.waitingSettle) return;
+      const p = polar(entity.angle + Math.sin(state.elapsed * 2 + entity.wobble) * .05, entity.dist);
+      if (entity.type === 'hazard') {
+        if (viaPulse) { state.score += 7 + state.combo; state.combo++; burst(p.x, p.y, '#ff9bce', 16, 1.25); blip('pulse'); showToast('碎晶被净化'); }
+        else hurt(p.x, p.y);
+        return;
+      }
+      const base = entity.type === 'rare' ? 30 : 10;
+      state.combo++; state.bestCombo = Math.max(state.combo, state.bestCombo);
+      state.score += base + Math.min(state.combo, 20) * (entity.type === 'rare' ? 2 : 1);
+      if (!state.duel) state.stageCollected += entity.type === 'rare' ? 2 : 1;
+      burst(p.x, p.y, entity.type === 'rare' ? '#ffde8c' : '#7cf6e7', entity.type === 'rare' ? 18 : 11, entity.type === 'rare' ? 1.25 : 1);
+      if (state.combo > 0 && state.combo % 8 === 0) showToast('花束 ×' + state.combo + '！');
+      blip(entity.type === 'rare' ? 'bonus' : 'good');
+      if (!state.duel && state.stageCollected >= state.stageTarget) finishCampaign();
+    }
+    function hurt(x, y) {
+      state.life--; state.combo = 0; burst(x, y, '#ff6f9f', 20, 1.25); blip('bad'); showToast('月亮受损');
+      if (state.duel) { if (state.life < 0) state.life = 0; return; }
+      if (state.life <= 0) endGame();
+    }
+    function pulse() {
+      const p = polar(state.player.angle, radius * .58); state.pulses.push({ x: p.x, y: p.y, r: 1, max: radius * .69, life: .48 }); burst(p.x, p.y, '#a69bff', 18, 1.1); blip('pulse'); showToast('共振脉冲！');
+    }
+    function pointFromEvent(event) {
+      const r = canvas.getBoundingClientRect(); const x = event.clientX - r.left; const y = event.clientY - r.top;
+      state.player.target = Math.atan2(y - cy, x - cx);
+    }
+
+    function showResult(title, primary, detail, action, scoreOverride) {
+      state.active = false; state.holding = false; state.resultAction = action;
+      ui.pause.disabled = true; ui.battle.hidden = true;
+      ui.resultTitle.textContent = title;
+      const s = scoreOverride == null ? state.score : scoreOverride;
+      ui.endScore.textContent = s.toLocaleString();
+      ui.record.textContent = detail || '';
+      ui.againBtn.textContent = primary;
+      setTimeout(() => ui.end.classList.remove('hidden'), 440);
+    }
+    function endGame() {
+      showResult('月亮睡着了', '重试本关', `本关还差 ${Math.max(0, state.stageTarget - state.stageCollected)} 颗星种`, 'retry');
+    }
+    function finishCampaign() {
+      if (!state.active) return;
+      const passed = state.level;
+      unlockedLevel = Math.max(unlockedLevel, Math.min(100, passed + 1));
+      localStorage.setItem(UNLOCK_KEY, String(unlockedLevel));
+      if (passed === 100) showResult('百关花园已盛放', '重玩第 100 关', `100 关全部通关 · 最佳连击 ×${state.bestCombo}`, 'replay-final');
+      else showResult(`第 ${passed} 关完成`, '进入下一关', `解锁第 ${passed + 1} 关 · 最佳连击 ×${state.bestCombo}`, 'next');
+    }
+    function onGameEnd(m) {
+      state.active = false; state.holding = false;
+      ui.pause.disabled = true; ui.battle.hidden = true;
+      matchmaking = false; match = null;
+      if (m.stats) updateStats(m.stats);
+      const title = m.forfeit ? '对手已离开，你获胜！' : (m.result === 'win' ? '对决胜利！' : (m.result === 'lose' ? '惜败，再来一局' : '对决平局'));
+      showResult(title, '再来一局', `${profile.username} ${m.yourScore} : ${m.oppScore} ${state.opponentName}`, 'rematch', m.yourScore);
+    }
+    function levelInfo() {
+      if (state.duel) return ['1v1 对决', `剩余 ${Math.max(0, Math.ceil(state.duelTime))} 秒 · 领先 ${state.opponentName} 赢下花园`];
+      return [`第 ${state.level} / 100 关`, `收集星种 ${Math.min(state.stageCollected, state.stageTarget)} / ${state.stageTarget}`];
+    }
+    function updateUI() {
+      ui.score.textContent = state.score.toLocaleString(); ui.combo.textContent = '× ' + state.combo;
+      ui.hearts.textContent = '♥'.repeat(Math.max(0, state.life)) + '♡'.repeat(Math.max(0, 5 - state.life));
+      const charge = state.holding ? clamp((performance.now() - state.holdStart) / 800, 0, 1) : 0;
+      ui.pulseFill.style.width = (charge * 100) + '%'; ui.pulseDot.classList.toggle('ready', charge >= 1);
+      const li = levelInfo(); ui.level.textContent = li[0]; ui.mission.textContent = li[1];
+      if (state.duel) { ui.battlePlayer.textContent = profile.username || '你'; ui.battlePlayerScore.textContent = state.score; ui.battleEnemy.textContent = state.opponentName; ui.battleEnemyScore.textContent = state.opponentScore; }
+    }
+    function update(dt) {
+      state.elapsed += dt;
+      if (state.duel) {
+        state.duelTime -= dt;
+        while (state.scheduleIdx < state.schedule.length && state.schedule[state.scheduleIdx].t <= state.elapsed) spawnScheduled();
+        state.syncTimer -= dt;
+        if (state.syncTimer <= 0) { sendScore(); state.syncTimer = .3; }
+        if (state.duelTime <= 0 && !state.waitingSettle) { state.duelTime = 0; state.waitingSettle = true; showToast('结算中…'); }
+      } else {
+        state.nextSpawn -= dt;
+        if (state.nextSpawn <= 0) { spawnRandom(); if (Math.random() < Math.min(.08 + state.elapsed * .004, .34)) spawnRandom(); state.nextSpawn = Math.max(.31, .95 - state.elapsed * .008) * rand(.76, 1.13); }
+      }
+      state.player.angle += shortAngle(state.player.angle, state.player.target) * Math.min(1, dt * 13);
+      const pp = polar(state.player.angle, radius * .58); const playerR = 15;
+      for (let i = state.entities.length - 1; i >= 0; i--) {
+        const e = state.entities[i]; e.dist -= e.speed * dt; e.angle += Math.sin(state.elapsed * 1.4 + e.wobble) * e.spin * .002;
+        const pos = polar(e.angle, e.dist); const dx = pos.x - pp.x, dy = pos.y - pp.y;
+        let remove = false;
+        if (Math.hypot(dx, dy) < playerR + e.r) { collect(e); remove = true; }
+        if (!remove && e.dist < radius * .105) { if (e.type !== 'hazard' || Math.random() < .9) hurt(pos.x, pos.y); remove = true; }
+        if (remove) state.entities.splice(i, 1);
+      }
+      for (let i = state.pulses.length - 1; i >= 0; i--) {
+        const p = state.pulses[i]; p.life -= dt; p.r += p.max * dt * 2.9;
+        for (let j = state.entities.length - 1; j >= 0; j--) { const e = state.entities[j]; if (e.type !== 'hazard') continue; const ep = polar(e.angle, e.dist); if (Math.abs(Math.hypot(ep.x - p.x, ep.y - p.y) - p.r) < e.r + 12) { collect(e, true); state.entities.splice(j, 1); } }
+        if (p.life < 0 || p.r > p.max) state.pulses.splice(i, 1);
+      }
+      for (let i = state.particles.length - 1; i >= 0; i--) { const p = state.particles[i]; p.life -= dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= .96; p.vy *= .96; if (p.life <= 0) state.particles.splice(i, 1); }
+      updateUI();
+    }
+    function sendScore() { if (state.duel && !state.waitingSettle && socket && socket.readyState === 1) send({ type: 'game:score', score: state.score, combo: state.combo }); }
+
+    // ---- 渲染 ----
+    function circle(x, y, r, fill, alpha = 1) { ctx.globalAlpha = alpha; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fillStyle = fill; ctx.fill(); ctx.globalAlpha = 1; }
+    function drawBackground(t) {
+      ctx.clearRect(0, 0, W, H);
+      const bg = ctx.createRadialGradient(cx, cy, 8, cx, cy, Math.max(W, H) * .7); bg.addColorStop(0, '#1d1b4c'); bg.addColorStop(.46, '#0e1030'); bg.addColorStop(1, '#070718'); ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+      for (const s of state.stars) { ctx.globalAlpha = s.a * (.72 + .28 * Math.sin(t * .0014 + s.phase)); ctx.fillStyle = '#d8d3ff'; ctx.fillRect(s.x, s.y, s.r, s.r); } ctx.globalAlpha = 1;
+      const halo = ctx.createRadialGradient(cx, cy, 1, cx, cy, radius * .95); halo.addColorStop(0, 'rgba(117,101,242,.20)'); halo.addColorStop(.65, 'rgba(67,65,159,.05)'); halo.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = halo; ctx.fillRect(0, 0, W, H);
+    }
+    function drawOrbit() {
+      ctx.save(); ctx.translate(cx, cy);
+      ctx.strokeStyle = 'rgba(176,165,255,.18)'; ctx.lineWidth = 1; ctx.setLineDash([3, 7]); ctx.beginPath(); ctx.arc(0, 0, radius * .58, 0, 6.283); ctx.stroke(); ctx.setLineDash([]);
+      ctx.strokeStyle = 'rgba(121,245,230,.07)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(0, 0, radius * .84, 0, 6.283); ctx.stroke(); ctx.restore();
+      const aura = ctx.createRadialGradient(cx - radius * .12, cy - radius * .16, 1, cx, cy, radius * .18); aura.addColorStop(0, '#b8b6ff'); aura.addColorStop(1, '#615ca9'); circle(cx, cy, radius * .18, aura);
+      circle(cx - radius * .055, cy - radius * .06, radius * .052, 'rgba(237,240,255,.32)');
+      ctx.strokeStyle = 'rgba(202,191,255,.32)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(cx, cy, radius * .235, .5, 2.6); ctx.stroke();
+    }
+    function drawEntity(e) {
+      const p = polar(e.angle, e.dist); const color = e.type === 'hazard' ? '#ff719e' : e.type === 'rare' ? '#ffda82' : '#77f5e3';
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(e.angle + Math.PI / 2 + state.elapsed * (e.type === 'hazard' ? 1.7 : -.8));
+      const g = ctx.createRadialGradient(0, 0, 1, 0, 0, e.r * 2.5); g.addColorStop(0, color); g.addColorStop(.25, color + 'aa'); g.addColorStop(1, color + '00'); circle(0, 0, e.r * 2.5, g);
+      if (e.type === 'hazard') { ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(0, -e.r); ctx.lineTo(e.r * .8, 0); ctx.lineTo(0, e.r); ctx.lineTo(-e.r * .8, 0); ctx.closePath(); ctx.fill(); circle(0, 0, e.r * .28, '#fff1f6'); }
+      else { circle(0, 0, e.r, color); circle(-e.r * .22, -e.r * .27, e.r * .3, '#fff'); if (e.type === 'rare') { ctx.strokeStyle = '#fff3bc'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-e.r * 1.25, 0); ctx.lineTo(e.r * 1.25, 0); ctx.moveTo(0, -e.r * 1.25); ctx.lineTo(0, e.r * 1.25); ctx.stroke(); } }
+      ctx.restore();
+    }
+    function drawPlayer() {
+      const p = polar(state.player.angle, radius * .58); const charging = state.holding ? clamp((performance.now() - state.holdStart) / 800, 0, 1) : 0;
+      const glow = ctx.createRadialGradient(p.x, p.y, 2, p.x, p.y, 34 + charging * 12); glow.addColorStop(0, 'rgba(125,247,231,.9)'); glow.addColorStop(.35, 'rgba(142,139,255,.28)'); glow.addColorStop(1, 'rgba(142,139,255,0)'); ctx.fillStyle = glow; ctx.fillRect(p.x - 46, p.y - 46, 92, 92);
+      if (charging > .02) { ctx.strokeStyle = `rgba(124,246,231,${.35 + charging * .5})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(p.x, p.y, 20 + charging * 9, -1.57, -1.57 + 6.283 * charging); ctx.stroke(); }
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(state.player.angle + Math.PI / 2); circle(0, 0, 13, '#9a8cff'); circle(0, 0, 9, '#e9e3ff'); circle(-2, -3, 3.5, '#7bf2e4'); ctx.fillStyle = '#252157'; ctx.beginPath(); ctx.moveTo(0, -20); ctx.lineTo(6, 8); ctx.lineTo(-6, 8); ctx.closePath(); ctx.fill(); ctx.restore();
+    }
+    function render(t) {
+      drawBackground(t); drawOrbit();
+      state.entities.sort((a, b) => b.dist - a.dist).forEach(drawEntity);
+      for (const p of state.pulses) { ctx.globalAlpha = Math.max(0, p.life * 2); ctx.strokeStyle = '#a99bff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.283); ctx.stroke(); ctx.globalAlpha = 1; }
+      for (const p of state.particles) { ctx.globalAlpha = Math.max(0, p.life / p.max); circle(p.x, p.y, p.r, p.color); ctx.globalAlpha = 1; }
+      drawPlayer();
+    }
+    function loop(t) {
+      const dt = Math.min(.033, (t - last) / 1000); last = t;
+      if (state.active && !state.paused) update(dt);
+      render(t);
+      if (state.active) raf = requestAnimationFrame(loop);
+    }
+
+    // ---- 输入 ----
+    canvas.addEventListener('pointerdown', (e) => { if (!state.active || state.paused) return; buildAudio(); canvas.setPointerCapture?.(e.pointerId); pointFromEvent(e); state.holding = true; state.holdStart = performance.now(); e.preventDefault(); });
+    canvas.addEventListener('pointermove', (e) => { if (state.active && !state.paused && state.holding) { pointFromEvent(e); e.preventDefault(); } });
+    function release(e) { if (!state.holding) return; const held = performance.now() - state.holdStart; state.holding = false; if (held > 620 && state.active && !state.paused) pulse(); if (e) e.preventDefault(); }
+    canvas.addEventListener('pointerup', release); canvas.addEventListener('pointercancel', release); canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    // ---- 流程 ----
+    function startCampaign() {
+      buildAudio();
+      reset({ mode: 'campaign', level: selectedLevel });
+      ui.lobby.classList.add('hidden');
+      run();
+    }
+    function startMatchmaking() {
+      if (socket && socket.readyState !== 1) { setMatchStatus('连接服务器失败，请刷新重试', true); return; }
+      matchmaking = true; match = null;
+      send({ type: 'matchmake' });
+      setMatchStatus('正在匹配对手<span class="dots"></span>', true);
+      updateStartBtn();
+    }
+    function cancelMatch() {
+      send({ type: 'cancel_match' });
+      matchmaking = false; match = null;
+      ui.matchStatus.hidden = true;
+      updateStartBtn();
+    }
+    function onMatchFound(m) {
+      matchmaking = false;
+      match = { roomId: m.roomId, opponent: m.opponent.username, startIn: m.startIn, timer: null };
+      runCountdown();
+    }
+    function runCountdown() {
+      clearInterval(match.timer);
+      let n = match.startIn;
+      setMatchStatus(`已匹配 <b style="color:#ffd982">${match.opponent}</b> · ${n} 秒后开始`, true);
+      match.timer = setInterval(() => {
+        n--;
+        if (n <= 0) { clearInterval(match.timer); setMatchStatus('开始！', true); }
+        else setMatchStatus(`已匹配 <b style="color:#ffd982">${match.opponent}</b> · ${n} 秒后开始`, true);
+      }, 1000);
+      updateStartBtn();
+    }
+    function onGameStart(m) {
+      clearInterval(match && match.timer);
+      buildAudio();
+      reset({ mode: 'duel', seed: m.seed, duration: m.duration, opponent: m.opponent.username });
+      ui.lobby.classList.add('hidden');
+      ui.matchStatus.hidden = true;
+      matchmaking = false; match = null;
+      run();
+    }
+
+    function onStart() {
+      if (selectedMode === 'campaign') startCampaign();
+      else if (matchmaking) cancelMatch();
+      else startMatchmaking();
+    }
+    function onAgain() {
+      if (state.resultAction === 'rematch') { ui.end.classList.add('hidden'); startMatchmaking(); return; }
+      if (state.resultAction === 'next') selectedLevel = Math.min(100, state.level + 1);
+      reset({ mode: 'campaign', level: selectedLevel });
+      ui.end.classList.add('hidden');
+      run();
+    }
+    function onLobby() {
+      if (state.mode === 'duel') send({ type: 'leave' });
+      matchmaking = false; match = null;
+      ui.matchStatus.hidden = true;
+      ui.end.classList.add('hidden');
+      enterLobby();
+    }
+
+    // ---- 事件绑定 ----
+    document.querySelectorAll('.auth-tab').forEach((tab) => tab.addEventListener('click', () => {
+      const isLogin = tab.dataset.tab === 'login';
+      document.querySelectorAll('.auth-tab').forEach((t) => t.classList.toggle('active', t === tab));
+      ui.authTitle.textContent = isLogin ? '欢迎回来' : '创建守护者';
+      ui.authSubtitle.textContent = isLogin ? '登录后开始单人闯关，或与真人 1v1 联网对战' : '注册一个账号，你的战绩会保存在服务器上';
+      ui.authSubmit.textContent = isLogin ? '登 录' : '注 册';
+      ui.username.autocomplete = isLogin ? 'username' : 'nickname';
+      ui.password.autocomplete = isLogin ? 'current-password' : 'new-password';
+      setAuthError('');
+    }));
+    ui.authSubmit.addEventListener('click', () => {
+      const isLogin = ui.authTitle.textContent === '欢迎回来';
+      const username = ui.username.value.trim();
+      const password = ui.password.value;
+      if (!username) { setAuthError('请输入用户名'); return; }
+      if (!password) { setAuthError('请输入密码'); return; }
+      setAuthError('');
+      ui.authSubmit.disabled = true;
+      send({ type: 'auth', action: isLogin ? 'login' : 'register', username, password });
+      setTimeout(() => { ui.authSubmit.disabled = false; }, 800);
+    });
+    ui.password.addEventListener('keydown', (e) => { if (e.key === 'Enter') ui.authSubmit.click(); });
+    document.querySelectorAll('.mode-card').forEach((card) => card.addEventListener('click', () => {
+      selectedMode = card.dataset.mode;
+      if (selectedMode === 'duel' && matchmaking) cancelMatch();
+      updateLobby();
+    }));
+    ui.prevLevel.addEventListener('click', () => { if (selectedLevel > 1) { selectedLevel--; updateLobby(); } });
+    ui.nextLevel.addEventListener('click', () => { if (selectedLevel < unlockedLevel) { selectedLevel++; updateLobby(); } });
+    ui.startBtn.addEventListener('click', onStart);
+    ui.againBtn.addEventListener('click', onAgain);
+    ui.lobbyBtn.addEventListener('click', onLobby);
+    ui.logoutBtn.addEventListener('click', () => {
+      send({ type: 'leave' });
+      profile = null; localStorage.removeItem(PROFILE_KEY);
+      matchmaking = false; match = null;
+      ui.playerName.textContent = '未登录';
+      if (socket) { try { socket.close(); } catch (_) {} }
+      setAuthError('');
+      ui.username.value = ''; ui.password.value = '';
+      showAuth();
+    });
+    ui.pause.addEventListener('click', () => {
+      if (!state.active || state.duel) return;
+      state.paused = !state.paused; ui.pause.textContent = state.paused ? '继续' : '暂停';
+      if (!state.paused) last = performance.now();
+      showToast(state.paused ? '花园已静止' : '继续生长');
+    });
+    ui.sound.addEventListener('click', () => { muted = !muted; ui.sound.textContent = muted ? '×' : '♪'; ui.sound.setAttribute('aria-label', muted ? '开启音效' : '关闭音效'); if (!muted) buildAudio(); });
+    window.addEventListener('resize', resize);
+    document.addEventListener('visibilitychange', () => { if (document.hidden && state.active && !state.paused && !state.duel) { state.paused = true; ui.pause.textContent = '继续'; } });
+
+    // ---- 启动 ----
+    resize(); render(0);
+    ui.playerName.textContent = profile ? profile.username : '未登录';
+    connectWs();
+  })();
+  </script>
+</body>
+</html>
