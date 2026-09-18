@@ -6,6 +6,6 @@ data/
 # 本机配置与临时文件
 .claude/
 outputs/
-*.jpg
-*.jpeg
-*.png
+
+# 根目录的个人图片（不提交；public/ 下的游戏素材正常提交）
+微信图片_*

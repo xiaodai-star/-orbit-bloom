@@ -70,8 +70,8 @@ function applyResult(username, result, score) {
 const sessions = new Map(); // token -> username
 const connByUser = new Map(); // username -> ws（同账号重连时踢掉旧连接）
 
-const queue = []; // 匹配队列：ws
 const rooms = new Map(); // roomId -> room
+const roomsByCode = new Map(); // 房号 -> roomId
 
 function send(ws, obj) {
   if (ws && ws.readyState === 1) {
@@ -87,40 +87,52 @@ function attach(ws, username) {
 }
 
 // ---------------------------------------------------------------------------
-// 匹配 + 房间
+// 房间 + 好友对战
 // ---------------------------------------------------------------------------
-function tryMatch() {
-  while (queue.length >= 2) {
-    const a = queue.shift();
-    const b = queue.shift();
-    const aOk = a.readyState === 1;
-    const bOk = b.readyState === 1;
-    if (aOk && bOk) { createRoom(a, b); continue; }
-    if (aOk) queue.unshift(a);
-    if (bOk) queue.unshift(b);
-  }
+const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // 去掉易混淆 0/O/1/I/L
+function genCode() {
+  let code;
+  do {
+    code = Array.from({ length: 6 }, () => CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)]).join('');
+  } while (roomsByCode.has(code));
+  return code;
 }
 
-function createRoom(a, b) {
-  const roomId = newId();
-  const seed = (Math.floor(Math.random() * 0x7fffffff) + 1) >>> 0;
-  const room = {
-    id: roomId,
-    a: a.username,
-    b: b.username,
-    seed,
-    duration: DUEL_DURATION,
-    scores: { [a.username]: 0, [b.username]: 0 },
-    combo: { [a.username]: 0, [b.username]: 0 },
-    ended: false,
-    timer: null,
-  };
-  rooms.set(roomId, room);
-  a.roomId = roomId; b.roomId = roomId;
-  a.inQueue = false; b.inQueue = false;
+function cleanupRoom(room) {
+  cleanupRoom(room);
+  if (room.code) roomsByCode.delete(room.code);
+}
 
-  send(a, { type: 'match_found', roomId, opponent: publicPlayer(b.username), startIn: MATCH_START_DELAY });
-  send(b, { type: 'match_found', roomId, opponent: publicPlayer(a.username), startIn: MATCH_START_DELAY });
+function handleCreateRoom(ws) {
+  if (!ws.username) return;
+  leaveRoom(ws);
+  const code = genCode();
+  const room = {
+    id: newId(), code, a: ws.username, b: null, status: 'waiting',
+    seed: 0, duration: DUEL_DURATION, scores: {}, combo: {}, ended: false, timer: null,
+  };
+  rooms.set(room.id, room);
+  roomsByCode.set(code, room.id);
+  ws.roomId = room.id;
+  send(ws, { type: 'room_created', code });
+}
+
+function handleJoinRoom(ws, msg) {
+  if (!ws.username) return;
+  const code = String(msg.code || '').trim().toUpperCase();
+  const room = roomsByCode.has(code) ? rooms.get(roomsByCode.get(code)) : null;
+  if (!room || room.ended || room.status !== 'waiting') return send(ws, { type: 'room_err', message: '房间不存在或已开始' });
+  if (room.a === ws.username) return send(ws, { type: 'room_err', message: '不能加入自己创建的房间' });
+  leaveRoom(ws);
+  room.b = ws.username;
+  room.status = 'playing';
+  room.seed = (Math.floor(Math.random() * 0x7fffffff) + 1) >>> 0;
+  room.scores = { [room.a]: 0, [room.b]: 0 };
+  room.combo = { [room.a]: 0, [room.b]: 0 };
+  ws.roomId = room.id;
+  const a = connByUser.get(room.a);
+  send(a, { type: 'room_start', roomId: room.id, opponent: publicPlayer(room.b), startIn: MATCH_START_DELAY });
+  send(ws, { type: 'room_start', roomId: room.id, opponent: publicPlayer(room.a), startIn: MATCH_START_DELAY });
   room.timer = setTimeout(() => startRoom(room), MATCH_START_DELAY * 1000);
 }
 
@@ -153,7 +165,7 @@ function settleRoom(room) {
   const b = connByUser.get(room.b);
   if (a) { send(a, { type: 'game_end', result: ra, yourScore: sa, oppScore: sb, stats: publicPlayer(room.a).stats }); a.roomId = null; }
   if (b) { send(b, { type: 'game_end', result: rb, yourScore: sb, oppScore: sa, stats: publicPlayer(room.b).stats }); b.roomId = null; }
-  rooms.delete(room.id);
+  cleanupRoom(room);
   savePlayers();
 }
 
@@ -172,22 +184,17 @@ function forfeit(room, leaverUsername) {
     send(stay, { type: 'game_end', result: 'win', yourScore: stayScore, oppScore: leaverScore, forfeit: true, stats: publicPlayer(stayUsername).stats });
     stay.roomId = null;
   }
-  rooms.delete(room.id);
+  cleanupRoom(room);
   savePlayers();
-}
-
-function leaveQueue(ws) {
-  if (!ws.inQueue) return;
-  const i = queue.indexOf(ws);
-  if (i >= 0) queue.splice(i, 1);
-  ws.inQueue = false;
 }
 
 function leaveRoom(ws) {
   if (!ws.roomId) return;
   const room = rooms.get(ws.roomId);
-  if (room && !room.ended) forfeit(room, ws.username);
   ws.roomId = null;
+  if (!room || room.ended) return;
+  if (room.status === 'waiting') { cleanupRoom(room); return; }
+  forfeit(room, ws.username);
 }
 
 // ---------------------------------------------------------------------------
@@ -197,9 +204,9 @@ function handle(ws, msg) {
   if (!msg || typeof msg.type !== 'string') return;
   switch (msg.type) {
     case 'auth': handleAuth(ws, msg); break;
-    case 'matchmake': handleMatchmake(ws); break;
-    case 'cancel_match': leaveQueue(ws); break;
-    case 'leave': leaveRoom(ws); leaveQueue(ws); break;
+    case 'create_room': handleCreateRoom(ws); break;
+    case 'join_room': handleJoinRoom(ws, msg); break;
+    case 'leave': leaveRoom(ws); break;
     case 'game:score': handleScore(ws, msg); break;
     case 'ping': send(ws, { type: 'pong' }); break;
   }
@@ -258,15 +265,6 @@ function handleAuth(ws, msg) {
   send(ws, { type: 'auth_err', message: '未知操作' });
 }
 
-function handleMatchmake(ws) {
-  if (!ws.username) return;
-  if (ws.inQueue || ws.roomId) return;
-  ws.inQueue = true;
-  queue.push(ws);
-  send(ws, { type: 'queue_status', message: '正在为你匹配对手…' });
-  tryMatch();
-}
-
 function handleScore(ws, msg) {
   const room = rooms.get(ws.roomId);
   if (!room || room.ended) return;
@@ -297,7 +295,7 @@ const MIME = {
 const server = http.createServer((req, res) => {
   if ((req.url || '/').split('?')[0] === '/health') {
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-    return res.end(JSON.stringify({ ok: true, players: Object.keys(players).length, rooms: rooms.size, queue: queue.length }));
+    return res.end(JSON.stringify({ ok: true, players: Object.keys(players).length, rooms: rooms.size }));
   }
   const urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
   const rel = urlPath === '/' ? 'index.html' : urlPath.replace(/^\/+/, '');
@@ -324,7 +322,6 @@ const wss = new WebSocketServer({ server, path: '/ws' });
 wss.on('connection', (ws) => {
   ws.username = null;
   ws.roomId = null;
-  ws.inQueue = false;
 
   ws.on('message', (data) => {
     let msg;
@@ -333,12 +330,7 @@ wss.on('connection', (ws) => {
   });
 
   ws.on('close', () => {
-    if (ws.inQueue) leaveQueue(ws);
-    if (ws.roomId) {
-      const room = rooms.get(ws.roomId);
-      if (room && !room.ended) forfeit(room, ws.username);
-      ws.roomId = null;
-    }
+    if (ws.roomId) leaveRoom(ws);
     if (ws.username && connByUser.get(ws.username) === ws) connByUser.delete(ws.username);
   });
 

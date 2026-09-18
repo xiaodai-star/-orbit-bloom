@@ -142,6 +142,19 @@
     .toast { position: absolute; z-index: 8; top: 138px; left: 50%; transform: translate(-50%, -8px); padding: 8px 13px; border-radius: 99px; pointer-events: none; opacity: 0; color: #15112c; font-size: 12px; font-weight: 900; background: #f5ebc3; transition: opacity .18s, transform .18s; white-space: nowrap; }
     .toast.show { opacity: 1; transform: translate(-50%, 0); }
     .footer-note { position: absolute; z-index: 1; bottom: 7px; width: 100%; text-align: center; color: rgba(207,200,242,.35); font-size: 9px; letter-spacing: .12em; }
+    .recharge-btn { padding: 8px 13px; border-radius: 99px; font-size: 12px; font-weight: 900; letter-spacing: .04em; color: #3a2a00; background: linear-gradient(100deg, #ffd982, #ffb84d); box-shadow: 0 4px 14px rgba(255,205,120,.28); }
+    .recharge-btn:active { transform: scale(.94); }
+    .recharge-qr { display: block; width: min(78%, 240px); margin: 4px auto 12px; border-radius: 16px; border: 1px solid rgba(255,255,255,.18); box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+    .recharge-caption { margin: 0 0 16px; color: var(--gold); font-size: 15px; font-weight: 900; letter-spacing: .02em; }
+    .room-panel { margin: -2px 0 14px; display: grid; gap: 9px; }
+    .room-panel[hidden] { display: none; }
+    .room-join { display: grid; grid-template-columns: 1fr 74px; gap: 8px; }
+    .room-input { width: 100%; padding: 12px 13px; outline: none; border: 1px solid rgba(255,255,255,.15); border-radius: 13px; color: var(--ink); background: rgba(4,4,25,.42); font: inherit; font-size: 16px; letter-spacing: .18em; text-transform: uppercase; }
+    .room-input:focus { border-color: var(--cyan); box-shadow: 0 0 0 3px rgba(121,245,230,.12); }
+    .room-join-btn { border-radius: 13px; font-size: 13px; font-weight: 900; color: #150e31; background: linear-gradient(100deg, #7cf6e7, #b29aff); }
+    .room-join-btn:active { transform: scale(.96); }
+    .room-status { margin-top: 2px; padding: 10px 11px; border-radius: 12px; color: #7af0e4; background: rgba(121,245,230,.10); border: 1px solid rgba(121,245,230,.25); font-size: 12px; font-weight: 800; line-height: 1.5; }
+    .room-status[hidden] { display: none; }
     @media (max-height: 690px) { canvas { height: 49dvh; min-height: 310px; } .mission { margin-bottom: 8px; padding: 8px 11px; } .hud { margin-top: 9px; } .stat { min-height: 55px; padding: 8px 9px; } .bottom { margin-top: 9px; } }
   </style>
 </head>
@@ -151,6 +164,7 @@
       <div class="brand"><span class="brand-mark">✦</span><span>ORBIT BLOOM</span></div>
       <div class="top-actions">
         <div class="player-chip" title="当前账号"><span class="avatar">✦</span><span id="playerName">未登录</span></div>
+        <button class="recharge-btn" id="rechargeBtn">充值</button>
         <button class="round-icon" id="soundBtn" aria-label="切换音效">♪</button>
       </div>
     </header>
@@ -198,14 +212,22 @@
         <div class="welcome">晚上好，<b id="welcomeName">守护者</b><span class="stats" id="playerStats"></span></div>
         <div class="mode-tabs">
           <button class="mode-card selected" data-mode="campaign"><span>单人闯关<small>100 关轨道试炼 · 逐关解锁</small></span></button>
-          <button class="mode-card duel" data-mode="duel"><span>多人模式 · 1v1 对决<small>真人联网匹配 · 50 秒同屏定胜负</small></span></button>
+          <button class="mode-card duel" data-mode="duel"><span>多人模式 · 好友 PK<small>开房间 · 输房号加入 · 50 秒定胜负</small></span></button>
         </div>
         <div class="stage-select" id="stageSelect">
           <div class="stage-label"><span>关卡选择</span><b id="unlockedLabel">已解锁 1 / 100</b></div>
           <div class="stage-controls"><button class="stage-arrow" id="prevLevel" aria-label="上一关">‹</button><div class="stage-current" id="stageCurrent">第 1 / 100 关</div><button class="stage-arrow" id="nextLevel" aria-label="下一关">›</button></div>
         </div>
-        <p class="duel-note" id="duelNote" hidden>真人联网对战：服务器为你匹配另一位玩家，双方在相同星种序列下 50 秒同屏比拼分数。</p>
-        <div class="match-status" id="matchStatus" hidden><span class="dots">正在匹配对手</span></div>
+        <p class="duel-note" id="duelNote" hidden>开房间 · 好友 PK：创建房间获得 6 位房号，把房号发给好友，好友输入后即可开打。</p>
+        <div class="room-panel" id="roomPanel" hidden>
+          <button class="play" id="createRoomBtn">创建房间</button>
+          <div class="room-join">
+            <input class="room-input" id="roomCodeInput" maxlength="6" autocomplete="off" placeholder="输入 6 位房号" />
+            <button class="room-join-btn" id="joinRoomBtn">加入</button>
+          </div>
+          <div class="room-status" id="roomStatus" hidden></div>
+        </div>
+        <div class="match-status" id="matchStatus" hidden><span class="dots">等待好友加入</span></div>
         <button class="play" id="startBtn">开始第 1 关</button>
         <button class="secondary-play" id="logoutBtn">退出登录</button>
       </div>
@@ -219,6 +241,17 @@
         <p class="record" id="recordText">今晚最高 0</p>
         <button class="play" id="againBtn">再种一片星光</button>
         <button class="secondary-play" id="lobbyBtn">返回模式选择</button>
+      </div>
+    </div>
+
+    <div class="overlay hidden" id="rechargeOverlay">
+      <div class="modal">
+        <div class="modal-symbol">💰</div>
+        <h1>充值 · 获得秘籍</h1>
+        <p class="subtitle">微信扫码支付 1 元，解锁通关秘籍</p>
+        <img class="recharge-qr" src="/recharge.jpg" alt="微信收款码" />
+        <p class="recharge-caption">扫码 1 元获得秘籍</p>
+        <button class="play" id="rechargeClose">关闭</button>
       </div>
     </div>
   </main>
@@ -237,6 +270,9 @@
       welcomeName: $('welcomeName'), playerStats: $('playerStats'), stageSelect: $('stageSelect'), stageCurrent: $('stageCurrent'),
       unlockedLabel: $('unlockedLabel'), prevLevel: $('prevLevel'), nextLevel: $('nextLevel'), duelNote: $('duelNote'),
       matchStatus: $('matchStatus'), startBtn: $('startBtn'), logoutBtn: $('logoutBtn'),
+      rechargeBtn: $('rechargeBtn'), recharge: $('rechargeOverlay'), rechargeClose: $('rechargeClose'),
+      roomPanel: $('roomPanel'), createRoomBtn: $('createRoomBtn'), joinRoomBtn: $('joinRoomBtn'),
+      roomCodeInput: $('roomCodeInput'), roomStatus: $('roomStatus'),
       battle: $('battleStrip'), battlePlayer: $('battlePlayer'), battlePlayerScore: $('battlePlayerScore'),
       battleEnemy: $('battleEnemy'), battleEnemyScore: $('battleEnemyScore'),
       resultTitle: $('resultTitle'), endScore: $('endScore'), record: $('recordText'), againBtn: $('againBtn'), lobbyBtn: $('lobbyBtn'),
@@ -267,7 +303,7 @@
     let selectedLevel = unlockedLevel;
     let selectedMode = 'campaign';
     let socket = null;
-    let matchmaking = false;
+    let roomCode = null;
     let match = null;
     let resumeTried = false;
 
@@ -316,8 +352,9 @@
       switch (m.type) {
         case 'auth_ok': onAuthOk(m); break;
         case 'auth_err': onAuthErr(m); break;
-        case 'queue_status': break;
-        case 'match_found': onMatchFound(m); break;
+        case 'room_created': onRoomCreated(m); break;
+        case 'room_err': onRoomErr(m); break;
+        case 'room_start': onRoomStart(m); break;
         case 'game_start': onGameStart(m); break;
         case 'opponent_score': state.opponentScore = Number(m.score) || 0; state.opponentCombo = Number(m.combo) || 0; break;
         case 'game_end': onGameEnd(m); break;
@@ -363,13 +400,15 @@
       ui.nextLevel.disabled = selectedLevel >= unlockedLevel;
       ui.stageSelect.hidden = selectedMode !== 'campaign';
       ui.duelNote.hidden = selectedMode !== 'duel';
-      ui.matchStatus.hidden = !(selectedMode === 'duel' && (matchmaking || match));
+      ui.roomPanel.hidden = selectedMode !== 'duel';
+      ui.matchStatus.hidden = !(selectedMode === 'duel' && (roomCode || match));
+      ui.startBtn.hidden = selectedMode === 'duel';
       document.querySelectorAll('.mode-card').forEach((c) => c.classList.toggle('selected', c.dataset.mode === selectedMode));
       updateStartBtn();
     }
     function updateStartBtn() {
-      if (selectedMode === 'campaign') { ui.startBtn.textContent = `开始第 ${selectedLevel} 关`; ui.startBtn.disabled = false; }
-      else { ui.startBtn.textContent = matchmaking ? '取消匹配' : '开始 1v1 匹配'; ui.startBtn.disabled = !!match; }
+      ui.startBtn.textContent = `开始第 ${selectedLevel} 关`;
+      ui.startBtn.disabled = false;
     }
     function setAuthError(msg) { ui.authError.textContent = msg || ''; }
 
@@ -482,10 +521,10 @@
     function onGameEnd(m) {
       state.active = false; state.holding = false;
       ui.pause.disabled = true; ui.battle.hidden = true;
-      matchmaking = false; match = null;
+      roomCode = null; match = null;
       if (m.stats) updateStats(m.stats);
-      const title = m.forfeit ? '对手已离开，你获胜！' : (m.result === 'win' ? '对决胜利！' : (m.result === 'lose' ? '惜败，再来一局' : '对决平局'));
-      showResult(title, '再来一局', `${profile.username} ${m.yourScore} : ${m.oppScore} ${state.opponentName}`, 'rematch', m.yourScore);
+      const title = m.forfeit ? '对手已离开，你获胜！' : (m.result === 'win' ? '对决胜利！' : (m.result === 'lose' ? '惜败' : '对决平局'));
+      showResult(title, '返回大厅', `${profile.username} ${m.yourScore} : ${m.oppScore} ${state.opponentName}`, 'duel-lobby', m.yourScore);
     }
     function levelInfo() {
       if (state.duel) return ['1v1 对决', `剩余 ${Math.max(0, Math.ceil(state.duelTime))} 秒 · 领先 ${state.opponentName} 赢下花园`];
@@ -588,34 +627,40 @@
       ui.lobby.classList.add('hidden');
       run();
     }
-    function startMatchmaking() {
-      if (socket && socket.readyState !== 1) { setMatchStatus('连接服务器失败，请刷新重试', true); return; }
-      matchmaking = true; match = null;
-      send({ type: 'matchmake' });
-      setMatchStatus('正在匹配对手<span class="dots"></span>', true);
-      updateStartBtn();
+    function setRoomStatus(text, show) { ui.roomStatus.innerHTML = text; ui.roomStatus.hidden = !show; }
+    function createRoom() {
+      if (socket && socket.readyState !== 1) { setRoomStatus('连接服务器失败，请刷新重试', true); return; }
+      roomCode = null; match = null;
+      send({ type: 'create_room' });
     }
-    function cancelMatch() {
-      send({ type: 'cancel_match' });
-      matchmaking = false; match = null;
-      ui.matchStatus.hidden = true;
-      updateStartBtn();
+    function joinRoom() {
+      const code = ui.roomCodeInput.value.trim().toUpperCase();
+      if (!code) { setRoomStatus('请输入房号', true); return; }
+      send({ type: 'join_room', code });
     }
-    function onMatchFound(m) {
-      matchmaking = false;
+    function onRoomCreated(m) {
+      roomCode = m.code;
+      match = null;
+      setRoomStatus(`房间号 <b style="color:#ffd982;letter-spacing:2px">${m.code}</b><br>把这个房号发给好友，等 TA 加入…`, true);
+      ui.roomCodeInput.value = '';
+    }
+    function onRoomErr(m) {
+      setRoomStatus(m.message || '加入失败', true);
+    }
+    function onRoomStart(m) {
+      roomCode = null;
       match = { roomId: m.roomId, opponent: m.opponent.username, startIn: m.startIn, timer: null };
       runCountdown();
     }
     function runCountdown() {
       clearInterval(match.timer);
       let n = match.startIn;
-      setMatchStatus(`已匹配 <b style="color:#ffd982">${match.opponent}</b> · ${n} 秒后开始`, true);
+      setRoomStatus(`好友 <b style="color:#ffd982">${match.opponent}</b> 已加入 · ${n} 秒后开始`, true);
       match.timer = setInterval(() => {
         n--;
-        if (n <= 0) { clearInterval(match.timer); setMatchStatus('开始！', true); }
-        else setMatchStatus(`已匹配 <b style="color:#ffd982">${match.opponent}</b> · ${n} 秒后开始`, true);
+        if (n <= 0) { clearInterval(match.timer); }
+        else setRoomStatus(`好友 <b style="color:#ffd982">${match.opponent}</b> 已加入 · ${n} 秒后开始`, true);
       }, 1000);
-      updateStartBtn();
     }
     function onGameStart(m) {
       clearInterval(match && match.timer);
@@ -623,26 +668,26 @@
       reset({ mode: 'duel', seed: m.seed, duration: m.duration, opponent: m.opponent.username });
       ui.lobby.classList.add('hidden');
       ui.matchStatus.hidden = true;
-      matchmaking = false; match = null;
+      ui.roomStatus.hidden = true;
+      roomCode = null; match = null;
       run();
     }
 
     function onStart() {
-      if (selectedMode === 'campaign') startCampaign();
-      else if (matchmaking) cancelMatch();
-      else startMatchmaking();
+      startCampaign();
     }
     function onAgain() {
-      if (state.resultAction === 'rematch') { ui.end.classList.add('hidden'); startMatchmaking(); return; }
+      if (state.resultAction === 'duel-lobby') { onLobby(); return; }
       if (state.resultAction === 'next') selectedLevel = Math.min(100, state.level + 1);
       reset({ mode: 'campaign', level: selectedLevel });
       ui.end.classList.add('hidden');
       run();
     }
     function onLobby() {
-      if (state.mode === 'duel') send({ type: 'leave' });
-      matchmaking = false; match = null;
+      if (state.mode === 'duel' || roomCode) send({ type: 'leave' });
+      roomCode = null; match = null;
       ui.matchStatus.hidden = true;
+      ui.roomStatus.hidden = true;
       ui.end.classList.add('hidden');
       enterLobby();
     }
@@ -672,18 +717,24 @@
     ui.password.addEventListener('keydown', (e) => { if (e.key === 'Enter') ui.authSubmit.click(); });
     document.querySelectorAll('.mode-card').forEach((card) => card.addEventListener('click', () => {
       selectedMode = card.dataset.mode;
-      if (selectedMode === 'duel' && matchmaking) cancelMatch();
+      if (selectedMode !== 'duel' && (roomCode || match)) { send({ type: 'leave' }); roomCode = null; match = null; ui.roomStatus.hidden = true; }
       updateLobby();
     }));
     ui.prevLevel.addEventListener('click', () => { if (selectedLevel > 1) { selectedLevel--; updateLobby(); } });
     ui.nextLevel.addEventListener('click', () => { if (selectedLevel < unlockedLevel) { selectedLevel++; updateLobby(); } });
     ui.startBtn.addEventListener('click', onStart);
+    ui.createRoomBtn.addEventListener('click', createRoom);
+    ui.joinRoomBtn.addEventListener('click', joinRoom);
+    ui.roomCodeInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') joinRoom(); });
+    ui.rechargeBtn.addEventListener('click', () => { ui.recharge.classList.remove('hidden'); });
+    ui.rechargeClose.addEventListener('click', () => { ui.recharge.classList.add('hidden'); });
+    ui.recharge.addEventListener('click', (e) => { if (e.target === ui.recharge) ui.recharge.classList.add('hidden'); });
     ui.againBtn.addEventListener('click', onAgain);
     ui.lobbyBtn.addEventListener('click', onLobby);
     ui.logoutBtn.addEventListener('click', () => {
       send({ type: 'leave' });
       profile = null; localStorage.removeItem(PROFILE_KEY);
-      matchmaking = false; match = null;
+      roomCode = null; match = null;
       ui.playerName.textContent = '未登录';
       if (socket) { try { socket.close(); } catch (_) {} }
       setAuthError('');
