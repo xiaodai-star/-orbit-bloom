@@ -2,3 +2,10 @@ node_modules/
 data/
 *.log
 .DS_Store
+
+# 本机配置与临时文件
+.claude/
+outputs/
+*.jpg
+*.jpeg
+*.png
