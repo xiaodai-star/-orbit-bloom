@@ -144,6 +144,8 @@
     .footer-note { position: absolute; z-index: 1; bottom: 7px; width: 100%; text-align: center; color: rgba(207,200,242,.35); font-size: 9px; letter-spacing: .12em; }
     .recharge-btn { padding: 8px 13px; border-radius: 99px; font-size: 12px; font-weight: 900; letter-spacing: .04em; color: #3a2a00; background: linear-gradient(100deg, #ffd982, #ffb84d); box-shadow: 0 4px 14px rgba(255,205,120,.28); }
     .recharge-btn:active { transform: scale(.94); }
+    .recharge-block { width: 100%; margin-top: 9px; padding: 11px; border-radius: 13px; color: #3a2a00; font-size: 12px; font-weight: 900; letter-spacing: .02em; background: linear-gradient(100deg, #ffd982, #ffb84d); box-shadow: 0 4px 14px rgba(255,205,120,.22); }
+    .recharge-block:active { transform: scale(.97); }
     .recharge-qr { display: block; width: min(78%, 240px); margin: 4px auto 12px; border-radius: 16px; border: 1px solid rgba(255,255,255,.18); box-shadow: 0 10px 30px rgba(0,0,0,.35); }
     .recharge-caption { margin: 0 0 16px; color: var(--gold); font-size: 15px; font-weight: 900; letter-spacing: .02em; }
     .room-panel { margin: -2px 0 14px; display: grid; gap: 9px; }
@@ -164,7 +166,6 @@
       <div class="brand"><span class="brand-mark">✦</span><span>ORBIT BLOOM</span></div>
       <div class="top-actions">
         <div class="player-chip" title="当前账号"><span class="avatar">✦</span><span id="playerName">未登录</span></div>
-        <button class="recharge-btn" id="rechargeBtn">充值</button>
         <button class="round-icon" id="soundBtn" aria-label="切换音效">♪</button>
       </div>
     </header>
@@ -230,6 +231,7 @@
         <div class="match-status" id="matchStatus" hidden><span class="dots">等待好友加入</span></div>
         <button class="play" id="startBtn">开始第 1 关</button>
         <button class="secondary-play" id="logoutBtn">退出登录</button>
+        <button class="recharge-block" id="rechargeBtn">充值 · 扫码 1 元获得秘籍</button>
       </div>
     </div>
 
